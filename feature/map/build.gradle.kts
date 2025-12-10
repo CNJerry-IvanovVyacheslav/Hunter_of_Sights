@@ -1,23 +1,24 @@
 plugins {
-    alias(libs.plugins.android.application)
+    alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.compose.compiler)
     alias(libs.plugins.hiltAndroid)
+    alias(libs.plugins.compose.compiler)
     id("kotlin-kapt")
 }
 
 android {
-    namespace = "com.melongamesinc.hunterofsights"
+    namespace = "com.melongamesinc.map"
     compileSdk = 36
 
+    buildFeatures {
+        compose = true // Включаем Compose
+    }
+
     defaultConfig {
-        applicationId = "com.melongamesinc.hunterofsights"
         minSdk = 28
-        targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles("consumer-rules.pro")
     }
 
     buildTypes {
@@ -35,9 +36,6 @@ android {
     }
     kotlinOptions {
         jvmTarget = "11"
-    }
-    buildFeatures {
-        compose = true
     }
 }
 
@@ -58,9 +56,14 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
-
-    implementation(libs.hilt.android)
     kapt(libs.hiltCompiler)
 
-    implementation(project(":feature:map"))
+    implementation(project(":core:model"))
+    implementation(project(":core:common"))
+
+    implementation(libs.hilt.android)
+    implementation(libs.androidx.lifecycle.viewmodel.ktx)
+    implementation(libs.maps.compose)
+    implementation(libs.play.services.maps)
+    implementation(libs.androidx.hilt.navigation.compose)
 }
