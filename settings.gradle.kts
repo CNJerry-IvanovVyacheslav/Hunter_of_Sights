@@ -21,4 +21,8 @@ dependencyResolutionManagement {
 
 rootProject.name = "Hunter of Sights"
 include(":app")
- 
+include(":core")
+include(":feature")
+include(":core:common")
+include(":core:model")
+include(":feature:map")
