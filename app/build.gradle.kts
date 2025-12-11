@@ -1,3 +1,6 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -5,6 +8,9 @@ plugins {
     alias(libs.plugins.hiltAndroid)
     id("kotlin-kapt")
 }
+
+val localProps = Properties()
+localProps.load(FileInputStream(rootProject.file("local.properties")))
 
 android {
     namespace = "com.melongamesinc.hunterofsights"
@@ -18,6 +24,8 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        manifestPlaceholders["GOOGLE_MAPS_KEY"] = localProps.getProperty("GOOGLE_MAPS_KEY")
     }
 
     buildTypes {
