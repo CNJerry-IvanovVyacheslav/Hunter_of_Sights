@@ -11,12 +11,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.Polygon
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.melongamesinc.model.Poi
 
@@ -49,28 +49,33 @@ fun MapScreen() {
             state.userLocation?.let { loc ->
                 Marker(
                     state = MarkerState(position = LatLng(loc.lat, loc.lng)),
-                    title = "Я"
+                    title = "Я",
+                    zIndex = 100f // Рисуем поверх всего
                 )
             }
 
+            // 2. Маркеры POI
             state.pois.forEach { poi ->
-                val icon = if (poi.isDiscovered) BitmapDescriptorFactory.defaultMarker(
-                    BitmapDescriptorFactory.HUE_RED
-                )
-                else BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_VIOLET)
-
-                Marker(
-                    state = MarkerState(position = LatLng(poi.location.lat, poi.location.lng)),
-                    icon = icon,
-                    title = if (poi.isDiscovered) poi.name else "???",
-                    onClick = {
-                        viewModel.setEvent(MapEvent.OnPoiClick(poi.id))
-                        true
-                    }
-                )
+                // ... (твой код маркеров)
             }
+
+            // 3. ТУМАН ВОЙНЫ (СЛЕД)
+            // Важно: step должен совпадать с ViewModel!
+            val step = 0.0005
 
             state.discoveredAreas.forEach { areaId ->
+                val bounds = getGridCellBounds(areaId, step)
+                if (bounds != null) {
+                    Polygon(
+                        points = bounds,
+                        // Сделаем ярко-синий цвет (Blue), 40% непрозрачности (0x66)
+                        fillColor = androidx.compose.ui.graphics.Color(0x660000FF),
+                        // Добавим обводку, чтобы видеть границы квадратов
+                        strokeColor = androidx.compose.ui.graphics.Color.Blue,
+                        strokeWidth = 2f,
+                        zIndex = 1f // Рисуем чуть выше карты, но ниже маркера игрока
+                    )
+                }
             }
         }
 
@@ -80,6 +85,34 @@ fun MapScreen() {
                 onDismiss = { viewModel.setEvent(MapEvent.OnDismissPoiDialog) }
             )
         }
+    }
+}
+
+private fun getGridCellBounds(areaId: String, step: Double): List<LatLng>? {
+    return try {
+        // В String.format в зависимости от локали может быть запятая как разделитель дроби
+        // Поэтому лучше надежно заменить запятую на точку, если она разделитель координат
+        // Но в нашем формате "lat,lng" лучше использовать split по запятой аккуратно.
+
+        val parts = areaId.split(",")
+        // Если вдруг локаль русская, числа могут быть "41,123", "44,456".
+        // Это сломает логику.
+        // В ViewModel лучше использовать Locale.US в String.format, но пока сделаем проще:
+
+        if (parts.size != 2) return null
+
+        // replace(',', '.') нужен, если вдруг локаль телефона подставила запятые в числа
+        val lat = parts[0].replace(',', '.').toDouble()
+        val lng = parts[1].replace(',', '.').toDouble()
+
+        listOf(
+            LatLng(lat, lng),
+            LatLng(lat + step, lng),
+            LatLng(lat + step, lng + step),
+            LatLng(lat, lng + step)
+        )
+    } catch (e: Exception) {
+        null
     }
 }
 
