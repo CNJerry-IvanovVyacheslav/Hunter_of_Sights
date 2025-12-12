@@ -69,6 +69,7 @@ dependencies {
 
     implementation(libs.hilt.android)
     kapt(libs.hiltCompiler)
+    implementation(libs.accompanist.permissions)
 
     implementation(project(":feature:map"))
 }

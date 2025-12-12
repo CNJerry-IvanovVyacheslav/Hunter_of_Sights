@@ -2,18 +2,40 @@ package com.melongamesinc.map
 
 import androidx.lifecycle.viewModelScope
 import com.melongamesinc.common.BaseViewModel
+import com.melongamesinc.data.LocationClient
 import com.melongamesinc.model.GeoPoint
 import com.melongamesinc.model.Poi
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import java.util.Locale
 import javax.inject.Inject
+import kotlin.math.abs
 
 @HiltViewModel
 class MapViewModel @Inject constructor(
-    // private val fogRepository: FogRepository
+    private val locationClient: LocationClient
 ) : BaseViewModel<MapState, MapEvent, MapEffect>() {
 
+    init {
+        collectLocation()
+    }
+
     override fun createInitialState() = MapState()
+
+    private fun collectLocation() {
+        locationClient
+            .getLocationUpdates(interval = 5000L)
+            .onEach { location ->
+                setEvent(MapEvent.OnLocationUpdate(location))
+            }
+            .catch {
+                setEffect { MapEffect.ShowToast("Не удалось получить GPS: ${it.message}") }
+            }
+            .launchIn(viewModelScope)
+    }
 
     override fun handleEvent(event: MapEvent): MapEvent? {
         when (event) {
@@ -42,14 +64,44 @@ class MapViewModel @Inject constructor(
     }
 
     private fun updateLocationAndFog(location: GeoPoint) {
-        val gridId = "${location.lat.toString().take(6)}_${location.lng.toString().take(6)}"
+        val step = 0.0005
 
-        setState {
-            copy(
-                userLocation = location,
-                discoveredAreas = discoveredAreas + gridId
-            )
+        val gridLat = (kotlin.math.floor(location.lat / step) * step)
+        val gridLng = (kotlin.math.floor(location.lng / step) * step)
+
+        val gridId = String.format(Locale.US, "%.5f,%.5f", gridLat, gridLng)
+
+        val newPois = currentState.pois.map { poi ->
+            if (!poi.isDiscovered && isNear(
+                    location,
+                    poi.location,
+                    0.0005
+                )
+            ) {
+                setEffect { MapEffect.ShowToast("Открыто: ${poi.name}!") }
+                poi.copy(isDiscovered = true)
+            } else {
+                poi
+            }
         }
+
+        if (!currentState.discoveredAreas.contains(gridId)) {
+            setState {
+                copy(
+                    userLocation = location,
+                    discoveredAreas = discoveredAreas + gridId,
+                    pois = newPois
+                )
+            }
+        } else {
+            setState { copy(userLocation = location, pois = newPois) }
+        }
+    }
+
+    private fun isNear(loc1: GeoPoint, loc2: GeoPoint, threshold: Double): Boolean {
+        val latDiff = abs(loc1.lat - loc2.lat)
+        val lngDiff = abs(loc1.lng - loc2.lng)
+        return (latDiff * latDiff) + (lngDiff * lngDiff) < (threshold * threshold)
     }
 
     private fun loadInitialData() {

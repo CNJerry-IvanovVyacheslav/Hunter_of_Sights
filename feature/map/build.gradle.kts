@@ -60,6 +60,7 @@ dependencies {
 
     implementation(project(":core:model"))
     implementation(project(":core:common"))
+    implementation(project(":core:data"))
 
     implementation(libs.hilt.android)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
